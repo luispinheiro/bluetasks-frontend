@@ -18,7 +18,8 @@ class TaskForm extends Component {
             redirect: false,
             buttonName: "Cadastrar",
             alert: null,
-            loading: false
+            loading: false,
+            saving: false
         }
         this.onSubmitHandler = this.onSubmitHandler.bind(this);
         this.onInputChangeHandler = this.onInputChangeHandler.bind(this);
@@ -35,25 +36,32 @@ class TaskForm extends Component {
                         if (error.response.status === 404) {
                             this.setErrorState("Tarefa não encontrada");
                         } else {
-                            this.setState(`Erro ao carregar dados: ${error.response}`);
+                            this.setErrorState(`Erro ao carregar dados: ${error.response}`);
                         }
                     } else {
-                        this.setState({ alert: `Erro na requisição: ${error.message}`, loading: false });
+                        this.setErrorState( `Erro na requisição: ${error.message}` );
                     }
                 });
         }
     }
 
     setErrorState(error) {
-        this.setState({ alert: error, loading: false })
+        this.setState({ alert: error, loading: false, saving: false });
     }
 
     onSubmitHandler(event) {
         event.preventDefault();
-        TaskService.save(this.state.task);
-        this.setState({ redirect: true });
+        this.setState({ saving: true, alert: null });
+        TaskService.save(this.state.task,
+            () => this.setState({ redirect: true, saving: false }),
+            error => {
+                if (error.response) {
+                    this.setErrorState(`Erro: ${error.response.data.error}`);
+                } else {
+                    this.setErrorState(`Erro na requisição: ${error.message}`);
+                }
+            })
     }
-
     onInputChangeHandler(event) {
         const field = event.target.name;
         const value = event.target.value;
@@ -97,7 +105,18 @@ class TaskForm extends Component {
                             placeholder="Informe a data"
                             onChange={this.onInputChangeHandler} />
                     </div>
-                        <button type="submit" className="btn btn-primary">{this.state.buttonName}</button>
+                        <button 
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={this.state.saving}>
+                                {
+                                    this.state.saving ?
+                                        <span className="spinner-border spinner-border-sm"
+                                            role="status" aria-hidden="true">
+                                        </span>
+                                    : this.state.buttonName 
+                                }
+                        </button>
                         &nbsp;&nbsp;
                         <button 
                             type="button" 
